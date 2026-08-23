@@ -11,10 +11,10 @@ const demoData = {
       { label: '在售商品', value: '6', meta: '总库存 1231 件 · 4 大类目', tone: 'good' },
     ],
     orders: [
-      { id: 'ORD-9286', buyer: 'Mariana L.', dest: '里约热内卢（BR）', product: '护肤保湿精华套装', amount: '$32', status: '待发货' },
+      { id: 'ORD-9286', buyer: 'Mariana L.', dest: '墨西哥城（MX）', product: '护肤保湿精华套装', amount: '$32', status: '待发货' },
       { id: 'ORD-9285', buyer: 'Diego F.', dest: '蒙特雷（MX）', product: '蓝牙耳机 TWS Pro', amount: '$26.90', status: '运输中' },
-      { id: 'ORD-9284', buyer: 'Lucía R.', dest: '圣地亚哥（CL）', product: '空气炸锅 5.5L', amount: '$59.90', status: '已签收' },
-      { id: 'ORD-9283', buyer: 'João S.', dest: '圣保罗（BR）', product: 'USB-C 65W快充头', amount: '$18.50', status: '异常件' },
+      { id: 'ORD-9284', buyer: 'Lucía R.', dest: '瓜达拉哈拉（MX）', product: '空气炸锅 5.5L', amount: '$59.90', status: '已签收' },
+      { id: 'ORD-9283', buyer: 'João S.', dest: '坎昆（MX）', product: 'USB-C 65W快充头', amount: '$18.50', status: '异常件' },
     ],
     gmv: [
       ['8/17', '8.2k'], ['8/18', '9.4k'], ['8/19', '8.9k'], ['8/20', '11.2k'], ['8/21', '10.5k'], ['8/22', '12.4k'], ['今天', '12.8k']
@@ -25,25 +25,21 @@ const demoData = {
       { name: '家电', value: '$5,870', detail: '1款 / 库存64件' },
       { name: '3C', value: '$12,888', detail: '2款 / 库存126件' },
     ],
-    markets: [
-      { name: '墨西哥', value: '$83.89 · 3单' },
-      { name: '巴西', value: '$50.50 · 2单' },
-      { name: '智利', value: '$59.90 · 1单' },
-    ],
+    markets: [{ name: '墨西哥', value: '$83.89 · 6单' }],
     accounts: [
       { handle: '@outdoor_mx', meta: '墨西哥 · 48.2K粉', status: '未授权' },
       { handle: '@beauty_mx', meta: '墨西哥 · 23.1K粉', status: '未授权' },
-      { handle: '@tech_brasil', meta: '巴西 · 67.4K粉', status: '已授权' },
-      { handle: '@home_chile', meta: '智利 · 12.8K粉', status: '未授权' },
+      { handle: '@tech_mexico', meta: '墨西哥 · 67.4K粉', status: '已授权' },
+      { handle: '@home_mexico', meta: '墨西哥 · 12.8K粉', status: '未授权' },
     ],
   },
   products: [
-    { name: '蓝牙耳机 TWS Pro', cat: '3C', sales: '312', revenue: '$8,393', stock: '37', state: '预警' },
-    { name: 'USB-C 65W快充头', cat: '3C', sales: '243', revenue: '$4,496', stock: '89', state: '正常' },
-    { name: '户外便携露营椅', cat: '户外', sales: '184', revenue: '$4,598', stock: '326', state: '正常' },
-    { name: '护肤保湿精华套装', cat: '美妆', sales: '167', revenue: '$5,344', stock: '512', state: '正常' },
-    { name: '空气炸锅 5.5L', cat: '家电', sales: '98', revenue: '$5,870', stock: '64', state: '预警' },
-    { name: '户外折叠桌椅套装', cat: '户外', sales: '76', revenue: '$6,004', stock: '203', state: '正常' },
+    { name: '蓝牙耳机 TWS Pro', cat: '3C', sales: '312', revenue: '$8,393', sellPrice: 26.90, cost: 12.40, profit: 14.50, margin: 53.9, stock: '37', state: '预警', media: [] },
+    { name: 'USB-C 65W快充头', cat: '3C', sales: '243', revenue: '$4,496', sellPrice: 18.50, cost: 7.20, profit: 11.30, margin: 61.1, stock: '89', state: '正常', media: [] },
+    { name: '户外便携露营椅', cat: '户外', sales: '184', revenue: '$4,598', sellPrice: 24.99, cost: 13.10, profit: 11.89, margin: 47.6, stock: '326', state: '正常', media: [] },
+    { name: '护肤保湿精华套装', cat: '美妆', sales: '167', revenue: '$5,344', sellPrice: 32.00, cost: 15.50, profit: 16.50, margin: 51.6, stock: '512', state: '正常', media: [] },
+    { name: '空气炸锅 5.5L', cat: '家电', sales: '98', revenue: '$5,870', sellPrice: 59.90, cost: 34.20, profit: 25.70, margin: 42.9, stock: '64', state: '预警', media: [] },
+    { name: '户外折叠桌椅套装', cat: '户外', sales: '76', revenue: '$6,004', sellPrice: 79.00, cost: 48.00, profit: 31.00, margin: 39.2, stock: '203', state: '正常', media: [] },
   ],
   factory: [
     { title: '户外露营椅卖点展示', duration: '15s', meta: '真实AI生成 · 西班牙语配音 · 户外便携露营椅 · 未发布', status: '待发布', progress: 68 },
@@ -117,7 +113,7 @@ function renderDashboard() {
         </div>
       </div>
       <div class="panel">
-        <div class="panel-head"><div><div class="panel-title">近 7 日 GMV</div><div class="panel-sub">三国汇总 (USD)</div></div><button class="inline-btn">数据洞察 →</button></div>
+              <div class="panel-head"><div><div class="panel-title">近 7 日 GMV</div><div class="panel-sub">墨西哥店铺汇总 (USD)</div></div><button class="inline-btn">数据洞察 →</button></div>
         <div class="cards">
           ${d.gmv.map(([day,val]) => `<div class="content-card"><strong>${esc(day)}</strong><div class="meta">${esc(val)}</div></div>`).join('')}
           <div class="content-card"><strong>日均 GMV</strong><div class="meta">$10,492 / 天</div></div>
@@ -133,7 +129,7 @@ function renderDashboard() {
         </div>
       </div>
       <div class="panel">
-        <div class="panel-head"><div><div class="panel-title">市场分布（三国）</div><div class="panel-sub">订单数 × 销售额</div></div></div>
+          <div class="panel-head"><div><div class="panel-title">墨西哥市场分布</div><div class="panel-sub">订单数 × 销售额</div></div></div>
         <div class="cards">
           ${d.markets.map(x => `<div class="content-card"><strong>${esc(x.name)}</strong><div class="meta">${esc(x.value)}</div></div>`).join('')}
         </div>
@@ -151,12 +147,12 @@ function renderProducts(query = '') {
   const items = syncedProducts.filter(p => `${p.name} ${p.cat} ${p.state}`.toLowerCase().includes(query.toLowerCase()));
   return `
     <section class="band">
-      <div class="band-head"><div><div class="band-title">商品中心</div><div class="band-sub">销售、库存和预警信息统一管理 · 同步后可直接进入内容生产</div></div><div class="toolbar-actions"><button class="secondary" data-action="open-integrations">配置商品接口</button><button class="primary" data-action="sync-products">↻ 同步商品</button></div></div>
+      <div class="band-head"><div><div class="band-title">商品中心</div><div class="band-sub">墨西哥店铺商品、利润和素材统一管理</div></div><div class="toolbar-actions"><button class="secondary" data-action="open-integrations">配置商品接口</button><button class="primary" data-action="sync-products">↻ 同步商品</button></div></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>#</th><th>商品</th><th>类目</th><th>销量</th><th>销售额</th><th>库存</th><th>状态</th><th>内容生产</th></tr></thead>
+          <thead><tr><th>#</th><th>商品</th><th>类目</th><th>售价</th><th>成本</th><th>单件利润</th><th>利润率</th><th>库存</th><th>状态</th><th>内容生产</th></tr></thead>
           <tbody>
-            ${items.map((p, i) => `<tr class="table-row"><td>${i + 1}</td><td>${esc(p.name)}</td><td>${esc(p.cat)}</td><td>${esc(p.sales || '-')}</td><td>${esc(p.revenue || '-')}</td><td>${esc(p.stock || '-')}</td><td><span class="status ${p.state === '预警' ? 'wait' : 'ok'}">${esc(p.state || '待分析')}</span></td><td><button class="inline-btn compact-btn" data-action="produce" data-product-id="${esc(p.id || p.name)}">一键生产</button></td></tr>`).join('')}
+            ${items.map((p, i) => `<tr class="table-row"><td>${i + 1}</td><td><strong>${esc(p.name)}</strong><div class="table-meta">${p.media?.length ? `已同步 ${p.media.length} 个素材` : '素材待接口返回'}</div></td><td>${esc(p.cat)}</td><td>$${esc(p.sellPrice ?? '-')}</td><td>$${esc(p.cost ?? '-')}</td><td class="profit-cell">$${esc(p.profit ?? '-')}</td><td>${esc(p.margin ?? '-')}%</td><td>${esc(p.stock || '-')}</td><td><span class="status ${p.state === '预警' ? 'wait' : 'ok'}">${esc(p.state || '待分析')}</span></td><td><button class="inline-btn compact-btn" data-action="produce" data-product-id="${esc(p.id || p.name)}">一键生产</button></td></tr>`).join('')}
           </tbody>
         </table>
       </div>
@@ -219,7 +215,7 @@ function renderRadar() {
     ['折叠收纳箱 3件套', '家居', '78', '$7.20 / 件', '竞争低'],
     ['手机支架三脚架自拍杆', '3C', '76', '$4.10 / 件', '竞争中']
   ];
-  return `<section class="band"><div class="band-head"><div><div class="band-title">选品雷达</div><div class="band-sub">拉美热销趋势 · AI 热度评分 · 一键入库</div></div><button class="inline-btn" data-action="sync">↻ 同步趋势</button></div><div class="grid-products">${items.map(x => `<article class="product-card"><div class="product-title">${esc(x[0])}<span class="score">🔥 ${x[2]}</span></div><div class="tag-row"><span class="tag">${x[1]}</span><span class="tag green">${x[4]}</span><span class="tag cyan">↗ +${Math.round(Number(x[2]) / 3)}%</span></div><strong class="profit">预计净利 ${x[3]}</strong><p>💡 拉美市场需求增长，搜索量持续上升，适合短视频种草。</p><div class="product-actions"><button class="secondary action-btn" data-action="analyze">AI 分析</button><button class="primary action-btn" data-action="add">＋ 入库</button></div></article>`).join('')}</div></section>`;
+  return `<section class="band"><div class="band-head"><div><div class="band-title">选品雷达</div><div class="band-sub">墨西哥热销趋势 · AI 热度评分 · 一键入库</div></div><button class="inline-btn" data-action="sync">↻ 同步趋势</button></div><div class="grid-products">${items.map(x => `<article class="product-card"><div class="product-title">${esc(x[0])}<span class="score">🔥 ${x[2]}</span></div><div class="tag-row"><span class="tag">${x[1]}</span><span class="tag green">${x[4]}</span><span class="tag cyan">↗ +${Math.round(Number(x[2]) / 3)}%</span></div><div class="price-row"><span>售价 $${x[3].replace('$','').split(' /')[0]}</span><span class="profit">利润率 ${Math.round(Number(x[2]) / 2)}%</span></div><p>💡 墨西哥搜索量上升，适合短视频种草。</p><div class="product-actions"><button class="secondary action-btn" data-action="analyze">AI 分析</button><button class="primary action-btn" data-action="add">＋ 入库</button></div></article>`).join('')}</div></section>`;
 }
 
 function renderIntegrations() {
@@ -303,7 +299,7 @@ document.addEventListener('submit', e => {
     e.preventDefault();
     const product = syncedProducts.find(p => String(p.id || p.name) === e.target.dataset.productId);
     const mode = new FormData(e.target).get('mode');
-    const assets = [...e.target.closest('.modal-mask').querySelector('input[type="file"]').files];
+    const assets = product?.media || [];
     e.target.closest('.modal-mask').remove();
     executeProduction(product, mode, assets);
   }
@@ -344,7 +340,7 @@ async function syncProducts() {
     const payload = await response.json();
     const items = Array.isArray(payload) ? payload : payload.products || payload.data || [];
     if (!items.length) throw new Error('接口没有返回商品数组');
-    syncedProducts = items.map((p, i) => ({ id: p.id || p.product_id || `remote-${i}`, name: p.name || p.title || '未命名商品', cat: p.cat || p.category || '未分类', sales: p.sales ?? p.orders ?? '-', revenue: p.revenue ?? p.gmv ?? '-', stock: p.stock ?? p.inventory ?? '-', state: p.state || '正常', raw: p }));
+    syncedProducts = items.map((p, i) => ({ id: p.id || p.product_id || `remote-${i}`, name: p.name || p.title || '未命名商品', cat: p.cat || p.category || '未分类', sales: p.sales ?? p.orders ?? '-', revenue: p.revenue ?? p.gmv ?? '-', sellPrice: p.sellPrice ?? p.price ?? p.sale_price ?? '-', cost: p.cost ?? p.purchase_price ?? '-', profit: p.profit ?? '-', margin: p.margin ?? p.profit_margin ?? '-', stock: p.stock ?? p.inventory ?? '-', state: p.state || '正常', media: p.media || p.images || p.image_urls || p.videos || [], raw: p }));
     localStorage.setItem('latam-products', JSON.stringify(syncedProducts)); render('products'); notify(`已同步 ${items.length} 个真实商品`);
   } catch (error) { notify(`同步失败：${error.message}`); }
 }
@@ -358,7 +354,8 @@ function testIntegration(id) {
 
 function openProductionModal(product) {
   const modal = document.createElement('div'); modal.className = 'modal-mask open';
-  modal.innerHTML = `<div class="modal production-modal"><div class="band-title">一键生产：${esc(product.name)}</div><div class="small">先自动分析商品卖点，再生成脚本、分镜和成片。</div><label class="mode-option"><input type="radio" name="mode" value="assets" checked /> 素材库混剪 <span>上传或选择已有图片 / 视频素材</span></label><label class="mode-option"><input type="radio" name="mode" value="ai" /> AI 直接生成视频 <span>根据分镜调用视频模型生成</span></label><label>素材文件（混剪模式可选）<input name="assets" type="file" multiple accept="image/*,video/*" /></label><label>目标语言<select name="language"><option>西班牙语（墨西哥）</option><option>葡萄牙语（巴西）</option><option>英语</option></select></label><div class="modal-actions"><button class="secondary" data-close>取消</button><button class="primary" type="submit" form="productionForm">开始自动生产</button></div><form id="productionForm" data-product-id="${esc(product.id || product.name)}"></form></div>`;
+  const mediaCount = product.media?.length || 0;
+  modal.innerHTML = `<div class="modal production-modal"><div class="band-title">一键生产：${esc(product.name)}</div><div class="small">商品资料和素材会随同步结果自动带入，不需要你手动复制或上传。</div><div class="auto-media"><strong>自动素材</strong><span>${mediaCount ? `已找到 ${mediaCount} 个商品图片/视频` : '当前接口没有返回素材，将由后端素材服务自动抓取'}</span></div><label class="mode-option"><input type="radio" name="mode" value="assets" checked /> 素材库混剪 <span>使用商品自动素材和模板完成混剪</span></label><label class="mode-option"><input type="radio" name="mode" value="ai" /> AI 直接生成视频 <span>根据分镜调用视频模型生成</span></label><label>目标语言<select name="language"><option>西班牙语（墨西哥）</option><option>英语</option></select></label><div class="modal-actions"><button class="secondary" data-close>取消</button><button class="primary" type="submit" form="productionForm">开始自动生产</button></div><form id="productionForm" data-product-id="${esc(product.id || product.name)}"></form></div>`;
   const form = modal.querySelector('#productionForm');
   form.innerHTML = '<input type="hidden" name="mode" value="assets"><input type="hidden" name="language" value="西班牙语（墨西哥）">';
   modal.querySelectorAll('input[name="mode"]').forEach(input => input.addEventListener('change', () => form.querySelector('[name="mode"]').value = input.value));
@@ -389,7 +386,7 @@ async function produceMedia(run, assets) {
   const audioRes = await fetch(tts.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(tts.key ? { Authorization: tts.key } : {}) }, body: JSON.stringify({ text: run.script, voice: tts.model }) });
   if (!audioRes.ok) throw new Error(`TTS HTTP ${audioRes.status}`); const audio = await audioRes.json(); run.audioUrl = audio.url || audio.audio_url || '';
   run.status = '生成视频'; saveRuns(); render('factory');
-  const videoRes = await fetch(video.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(video.key ? { Authorization: video.key } : {}) }, body: JSON.stringify({ mode: run.mode, storyboard: run.storyboard, script: run.script, audioUrl: run.audioUrl, assets: assets.map(x => x.name) }) });
+  const videoRes = await fetch(video.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(video.key ? { Authorization: video.key } : {}) }, body: JSON.stringify({ mode: run.mode, storyboard: run.storyboard, script: run.script, audioUrl: run.audioUrl, assets: assets.map(x => typeof x === 'string' ? x : x.url || x.src || x.name).filter(Boolean) }) });
   if (!videoRes.ok) throw new Error(`视频 HTTP ${videoRes.status}`); const result = await videoRes.json(); run.videoUrl = result.url || result.video_url || result.task_id || ''; run.status = '已完成'; saveRuns(); render('factory'); notify('视频已生成，可进入发布流程');
 }
 

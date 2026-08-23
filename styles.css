@@ -76,6 +76,8 @@ table { width: 100%; border-collapse: collapse; min-width: 640px; }
 th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--line); font-size: 14px; }
 th { color: var(--muted); font-weight: 600; }
 .table-row:hover { background: #fafcfb; }
+.table-meta { color: var(--muted); font-size: 11px; margin-top: 3px; }
+.profit-cell { color: #059669; font-weight: 700; }
 .status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 12px; }
 .status.ok { background: #e8f6ee; color: var(--accent-2); }
 .status.wait { background: #fff4df; color: #9d6810; }
@@ -114,6 +116,7 @@ th { color: var(--muted); font-weight: 600; }
 .empty-production { color: var(--muted); background: #f7f9fa; border-radius: 10px; text-align: center; padding: 28px; font-size: 13px; }
 .mode-option { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--text); font-size: 14px; }
 .mode-option span { grid-column: 2; color: var(--muted); font-size: 12px; }
+.auto-media { display: flex; justify-content: space-between; gap: 12px; background: #eefafa; color: #087f8a; border-radius: 9px; padding: 10px 12px; font-size: 12px; }
 .production-modal label:not(.mode-option) { display: grid; gap: 6px; color: var(--muted); font-size: 13px; }
 .result-modal { max-height: 82vh; overflow: auto; }
 .result-modal h4 { margin: 4px 0 0; }
