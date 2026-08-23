@@ -103,7 +103,7 @@ function renderDashboard() {
     <section class="split">
       <div class="panel">
         <div class="panel-head"><div><div class="panel-title">订单流转看板</div><div class="panel-sub">点击状态框跳转订单列表</div></div><button class="inline-btn">全部订单 →</button></div>
-        <div class="table-wrap">
+        <div class="table-wrap compact-table">
           <table>
             <thead><tr><th>订单号</th><th>买家</th><th>目的地</th><th>商品</th><th>金额</th><th>状态</th></tr></thead>
             <tbody>
@@ -114,9 +114,9 @@ function renderDashboard() {
       </div>
       <div class="panel">
               <div class="panel-head"><div><div class="panel-title">近 7 日 GMV</div><div class="panel-sub">墨西哥店铺汇总 (USD)</div></div><button class="inline-btn">数据洞察 →</button></div>
-        <div class="cards">
-          ${d.gmv.map(([day,val]) => `<div class="content-card"><strong>${esc(day)}</strong><div class="meta">${esc(val)}</div></div>`).join('')}
-          <div class="content-card"><strong>日均 GMV</strong><div class="meta">$10,492 / 天</div></div>
+        <div class="gmv-list">
+          ${d.gmv.map(([day,val]) => `<div class="gmv-row"><span>${esc(day)}</span><div class="gmv-track"><i style="width:${Math.min(100, Number.parseFloat(val) / 13 * 100)}%"></i></div><strong>${esc(val)}</strong></div>`).join('')}
+          <div class="gmv-average"><span>日均 GMV</span><strong>$10,492 / 天</strong></div>
         </div>
       </div>
     </section>

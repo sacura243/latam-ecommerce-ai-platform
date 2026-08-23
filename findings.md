@@ -4,3 +4,5 @@
 - 当前浏览器端会保存各第三方服务的 API Key，正式使用必须迁移到服务端环境变量。
 - 商品同步真实接口需要返回商品基础字段、价格/成本字段，以及 `images`、`videos` 或 `media` 等素材 URL。
 - 内容生成任务适合异步 API：创建任务后轮询状态，不应让浏览器等待视频生成完成。
+- GitHub 参考了 `satnaing/shadcn-admin` 的高密度后台布局和 `RWN-N/refine-admin-dashboard` 的表格/任务组织方式；保留为设计参考，没有复制其代码。
+- 截图中的大块空白由 CSS Grid 默认 stretch 造成：右侧内容较长时左侧面板被拉到同高；订单表的 `min-width` 又在窄内容区触发横向滚动。
