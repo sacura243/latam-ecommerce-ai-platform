@@ -219,8 +219,8 @@ function renderRadar() {
 }
 
 function renderIntegrations() {
-  const saved = JSON.parse(localStorage.getItem('latam-integrations') || '{}');
-  return `<section class="band"><div class="band-head"><div><div class="band-title">接口中心</div><div class="band-sub">每类服务单独配置、测试和替换。密钥仅保存在当前浏览器。</div></div><span class="status wait">${Object.keys(saved).length}/5 已配置</span></div><div class="integration-grid">${integrationDefinitions.map(def => { const c = saved[def.id] || {}; return `<article class="integration-card"><div class="integration-head"><div><strong>${def.name}</strong><p>${def.description}</p></div><span class="status ${c.url ? 'ok' : 'wait'}">${c.url ? '已配置' : '未配置'}</span></div><form class="integration-form" data-integration="${def.id}">${def.fields.map(([key,label,placeholder]) => `<label>${label}<input name="${key}" type="${key === 'key' ? 'password' : 'text'}" value="${esc(c[key] || '')}" placeholder="${placeholder}" /></label>`).join('')}<div class="integration-actions"><button class="secondary" type="button" data-action="test-integration" data-integration-id="${def.id}">测试连接</button><button class="primary" type="submit">保存接口</button></div></form></article>`; }).join('')}</div><div class="api-note">推荐所有第三方密钥都放在你自己的后端代理中，前端只保存接口地址；当前配置仅用于演示和开发测试。</div></section>`;
+  const saved = JSON.parse(localStorage.getItem('latam-backend-config') || '{}');
+  return `<section class="band"><div class="band-head"><div><div class="band-title">接口中心</div><div class="band-sub">网页只连接你的后端，第三方密钥全部放在服务器环境变量中。</div></div><span class="status ${saved.url ? 'ok' : 'wait'}">${saved.url ? '后端已配置' : '未配置'}</span></div><form id="backendForm" class="backend-form"><label>后端 API 地址<input name="url" value="${esc(saved.url || '')}" placeholder="https://your-api.onrender.com" /></label><div class="integration-actions"><button class="secondary" type="button" data-action="test-backend">测试后端</button><button class="primary" type="submit">保存后端地址</button></div></form><div id="backendServices" class="service-status-grid"><div class="api-note">填写地址后点击“测试后端”，服务端会返回商品、LLM、声音、视频、RPA 的配置状态。</div></div><div class="api-note">安全边界：浏览器不再保存任何第三方 API Key。后端部署后，在 Render/Railway 的环境变量中配置真实密钥。</div></section>`;
 }
 
 function renderSettings() { return renderIntegrations(); }
@@ -264,7 +264,9 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (action === 'view-run') { openRunResult(e.target.closest('[data-run-id]').dataset.runId); return; }
+  if (action === 'publish-run') { publishRun(e.target.dataset.runId); return; }
   if (action === 'test-integration') { testIntegration(e.target.dataset.integrationId); return; }
+  if (action === 'test-backend') { testBackend(); return; }
   if (action === 'sync') { runApiAction('/api/products/sync', {}, '趋势数据已刷新'); return; }
   if (action === 'analyze') { runApiAction('/api/products/analyze', {}, 'AI 分析任务已加入队列'); return; }
   if (action === 'add') { runApiAction('/api/products', { action: 'add' }, '商品已加入待入库列表'); return; }
@@ -288,6 +290,11 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('submit', e => {
+  if (e.target.id === 'backendForm') {
+    e.preventDefault();
+    localStorage.setItem('latam-backend-config', JSON.stringify(Object.fromEntries(new FormData(e.target).entries())));
+    notify('后端地址已保存'); render('integrations'); return;
+  }
   if (e.target.matches('.integration-form')) {
     e.preventDefault();
     const all = JSON.parse(localStorage.getItem('latam-integrations') || '{}');
@@ -331,11 +338,11 @@ function updateEngineStatus() {
 }
 
 async function syncProducts() {
-  const cfg = getIntegrations().product;
-  if (!cfg?.url) { notify('请先在接口中心配置商品接口'); render('integrations'); return; }
+  const backend = getBackendUrl();
+  if (!backend) { notify('请先在接口中心配置后端地址'); render('integrations'); return; }
   notify('正在同步真实商品…');
   try {
-    const response = await fetch(cfg.url, { headers: cfg.key ? { Authorization: cfg.key } : {} });
+    const response = await fetch(`${backend}/api/products`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     const items = Array.isArray(payload) ? payload : payload.products || payload.data || [];
@@ -343,6 +350,19 @@ async function syncProducts() {
     syncedProducts = items.map((p, i) => ({ id: p.id || p.product_id || `remote-${i}`, name: p.name || p.title || '未命名商品', cat: p.cat || p.category || '未分类', sales: p.sales ?? p.orders ?? '-', revenue: p.revenue ?? p.gmv ?? '-', sellPrice: p.sellPrice ?? p.price ?? p.sale_price ?? '-', cost: p.cost ?? p.purchase_price ?? '-', profit: p.profit ?? '-', margin: p.margin ?? p.profit_margin ?? '-', stock: p.stock ?? p.inventory ?? '-', state: p.state || '正常', media: p.media || p.images || p.image_urls || p.videos || [], raw: p }));
     localStorage.setItem('latam-products', JSON.stringify(syncedProducts)); render('products'); notify(`已同步 ${items.length} 个真实商品`);
   } catch (error) { notify(`同步失败：${error.message}`); }
+}
+
+function getBackendUrl() { return (JSON.parse(localStorage.getItem('latam-backend-config') || '{}').url || '').replace(/\/$/, ''); }
+async function testBackend() {
+  const input = document.querySelector('#backendForm input[name="url"]'); const url = (input?.value || getBackendUrl()).replace(/\/$/, '');
+  if (!url) { notify('请先填写后端地址'); return; }
+  notify('正在测试后端…');
+  try {
+    const response = await fetch(`${url}/health`); const data = await response.json(); if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    const target = document.getElementById('backendServices');
+    if (target) target.innerHTML = Object.entries(data.services || {}).map(([key, ok]) => `<div class="service-status"><strong>${key.toUpperCase()}</strong><span class="status ${ok ? 'ok' : 'wait'}">${ok ? '已配置' : '待配置'}</span></div>`).join('');
+    notify(`后端连接成功 · ${data.market || 'MX'}`);
+  } catch (error) { notify(`后端连接失败：${error.message}`); }
 }
 
 function testIntegration(id) {
@@ -364,36 +384,41 @@ function openProductionModal(product) {
 }
 
 async function executeProduction(product, mode, assets) {
-  const run = { id: `run-${Date.now()}`, productName: product.name, mode, status: '分析中', updatedAt: new Date().toLocaleString(), analysis: '', script: '', storyboard: '', audioUrl: '', videoUrl: '' };
-  productionRuns.unshift(run); saveRuns(); render('factory'); notify('已创建任务，正在分析商品…');
-  const llm = getIntegrations().llm;
+  const backend = getBackendUrl();
+  if (!backend) { notify('请先在接口中心配置后端地址'); render('integrations'); return; }
+  notify('正在创建后端生产任务…');
   try {
-    if (!llm?.url) throw new Error('请先配置 LLM 脚本接口');
-    const prompt = `请分析这个电商商品并输出严格 JSON，字段为 analysis、script、storyboard。商品：${JSON.stringify(product.raw || product)}。script 是 30 秒短视频旁白，storyboard 是包含 shot、visual、voiceover、duration 的数组。`;
-    const res = await fetch(llm.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(llm.key ? { Authorization: llm.key } : {}) }, body: JSON.stringify({ model: llm.model || 'deepseek-chat', messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' } }) });
-    if (!res.ok) throw new Error(`LLM HTTP ${res.status}`);
-    const data = await res.json(); const content = data.choices?.[0]?.message?.content || data.output || data;
-    const parsed = typeof content === 'string' ? JSON.parse(content.replace(/^```json\s*|\s*```$/g, '')) : content;
-    Object.assign(run, { status: '脚本已生成', analysis: parsed.analysis || '', script: parsed.script || '', storyboard: parsed.storyboard || [] }); saveRuns(); render('factory'); notify('脚本和分镜已生成，继续制作声音与视频…');
-    await produceMedia(run, assets);
-  } catch (error) { run.status = '失败'; run.error = error.message; saveRuns(); render('factory'); notify(`生产暂停：${error.message}`); }
+    const res = await fetch(`${backend}/api/production`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product: { ...product, media: assets }, mode, language: 'es-MX' }) });
+    const task = await res.json(); if (!res.ok) throw new Error(task.error || `HTTP ${res.status}`);
+    upsertRun(task); render('factory'); notify('任务已创建，正在后台自动生产'); pollRun(task.id, backend);
+  } catch (error) { notify(`任务创建失败：${error.message}`); }
 }
 
-async function produceMedia(run, assets) {
-  const tts = getIntegrations().tts; const video = getIntegrations().video;
-  if (!tts?.url || !video?.url) { run.status = '脚本已生成'; run.error = '请在接口中心配置声音和视频接口后继续'; saveRuns(); render('factory'); return; }
-  run.status = '生成配音'; saveRuns(); render('factory');
-  const audioRes = await fetch(tts.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(tts.key ? { Authorization: tts.key } : {}) }, body: JSON.stringify({ text: run.script, voice: tts.model }) });
-  if (!audioRes.ok) throw new Error(`TTS HTTP ${audioRes.status}`); const audio = await audioRes.json(); run.audioUrl = audio.url || audio.audio_url || '';
-  run.status = '生成视频'; saveRuns(); render('factory');
-  const videoRes = await fetch(video.url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(video.key ? { Authorization: video.key } : {}) }, body: JSON.stringify({ mode: run.mode, storyboard: run.storyboard, script: run.script, audioUrl: run.audioUrl, assets: assets.map(x => typeof x === 'string' ? x : x.url || x.src || x.name).filter(Boolean) }) });
-  if (!videoRes.ok) throw new Error(`视频 HTTP ${videoRes.status}`); const result = await videoRes.json(); run.videoUrl = result.url || result.video_url || result.task_id || ''; run.status = '已完成'; saveRuns(); render('factory'); notify('视频已生成，可进入发布流程');
+function upsertRun(task) {
+  const run = { ...task, productName: task.productName || task.product?.name || '未命名商品', updatedAt: new Date(task.updatedAt || Date.now()).toLocaleString() };
+  const index = productionRuns.findIndex(item => item.id === run.id);
+  if (index >= 0) productionRuns[index] = run; else productionRuns.unshift(run);
+  saveRuns();
+}
+
+async function pollRun(id, backend, tries = 0) {
+  if (tries > 120) return;
+  try {
+    const response = await fetch(`${backend}/api/production/${id}`); const task = await response.json(); if (!response.ok) throw new Error(task.error || `HTTP ${response.status}`);
+    upsertRun(task); if (document.body.dataset.view === 'factory') render('factory');
+    if (!['已完成', '失败', '等待声音或视频服务配置', '已提交发布'].includes(task.status)) setTimeout(() => pollRun(id, backend, tries + 1), 3000);
+  } catch (error) { notify(`任务状态获取失败：${error.message}`); }
 }
 
 function saveRuns() { localStorage.setItem('latam-production-runs', JSON.stringify(productionRuns)); }
 function openRunResult(id) {
   const run = productionRuns.find(x => x.id === id); if (!run) return;
-  const modal = document.createElement('div'); modal.className = 'modal-mask open'; modal.innerHTML = `<div class="modal result-modal"><div class="band-title">${esc(run.productName)} · ${esc(run.status)}</div><h4>商品分析</h4><pre>${esc(run.analysis || run.error || '暂无结果')}</pre><h4>脚本</h4><pre>${esc(run.script || '暂无结果')}</pre><h4>分镜</h4><pre>${esc(JSON.stringify(run.storyboard || [], null, 2))}</pre>${run.videoUrl ? `<a class="primary" href="${esc(run.videoUrl)}" target="_blank">打开视频结果</a>` : ''}<div class="modal-actions"><button class="secondary" data-close>关闭</button></div></div>`; modal.addEventListener('click', ev => { if (ev.target === modal || ev.target.hasAttribute('data-close')) modal.remove(); }); document.body.appendChild(modal);
+  const modal = document.createElement('div'); modal.className = 'modal-mask open'; modal.innerHTML = `<div class="modal result-modal"><div class="band-title">${esc(run.productName)} · ${esc(run.status)}</div><h4>商品分析</h4><pre>${esc(run.analysis || run.error || '暂无结果')}</pre><h4>脚本</h4><pre>${esc(run.script || '暂无结果')}</pre><h4>分镜</h4><pre>${esc(JSON.stringify(run.storyboard || [], null, 2))}</pre>${run.videoUrl ? `<div class="modal-actions"><a class="primary" href="${esc(run.videoUrl)}" target="_blank">打开视频结果</a><button class="primary" data-action="publish-run" data-run-id="${esc(run.id)}">提交 RPA 发布</button></div>` : ''}<div class="modal-actions"><button class="secondary" data-close>关闭</button></div></div>`; modal.addEventListener('click', ev => { if (ev.target === modal || ev.target.hasAttribute('data-close')) modal.remove(); }); document.body.appendChild(modal);
+}
+
+async function publishRun(id) {
+  const backend = getBackendUrl(); if (!backend) { notify('请先配置后端地址'); return; }
+  try { const response = await fetch(`${backend}/api/production/${id}/publish`, { method: 'POST' }); const data = await response.json(); if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`); upsertRun(data); render('factory'); notify('已提交 RPA 发布'); } catch (error) { notify(`发布失败：${error.message}`); }
 }
 
 render('dashboard');
