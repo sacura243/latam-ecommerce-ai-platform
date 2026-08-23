@@ -61,13 +61,15 @@
           <input id="searchInput" class="search" placeholder="搜索商品、订单、视频任务..." />
           <div class="engine-list"><span><i class="dot"></i> Seedance</span><span><i class="dot"></i> LLM</span><span><i class="dot warn"></i> TTS</span><span><i class="dot warn"></i> RPA</span></div>
           <button class="lang-btn">ES / PT <span>🌎</span></button>
-          <div class="avatar">A</div>
+          <button class="avatar" id="avatarBtn" aria-label="管理员菜单">A</button>
         </div>
       </header>
 
       <section id="app-view" class="content"></section>
     </main>
   </div>
+
+  <div id="authGate" class="auth-gate" aria-modal="true" role="dialog"></div>
 
   <script src="app.js"></script>
 </body>

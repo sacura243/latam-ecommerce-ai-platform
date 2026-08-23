@@ -66,6 +66,46 @@ const searchInput = document.getElementById('searchInput');
 let syncedProducts = JSON.parse(localStorage.getItem('latam-products') || 'null') || demoData.products.map((p, index) => ({ id: `demo-${index + 1}`, ...p }));
 let productionRuns = JSON.parse(localStorage.getItem('latam-production-runs') || '[]');
 
+const runtimeConfigKey = 'latam-integrations-v2';
+const authKey = 'latam-local-admin';
+const defaultRuntimeConfig = {
+  mode: 'direct',
+  seedance: { baseUrl: '', apiKey: '', videoModel: 'doubao-seedance-1-0-pro-250528', imageModel: 'doubao-seedream-3-0-t2i-250415' },
+  llm: { baseUrl: '', apiKey: '', model: 'deepseek-chat' },
+  tts: { baseUrl: '', apiKey: '', voice: 'longxiaochun_v2' },
+  rpa: { baseUrl: 'http://127.0.0.1:8899', apiKey: '' },
+  backend: { url: '' }
+};
+
+function getRuntimeConfig() {
+  try { const stored = JSON.parse(localStorage.getItem(runtimeConfigKey) || '{}'); return { ...defaultRuntimeConfig, ...stored, seedance: { ...defaultRuntimeConfig.seedance, ...(stored.seedance || {}) }, llm: { ...defaultRuntimeConfig.llm, ...(stored.llm || {}) }, tts: { ...defaultRuntimeConfig.tts, ...(stored.tts || {}) }, rpa: { ...defaultRuntimeConfig.rpa, ...(stored.rpa || {}) }, backend: { ...defaultRuntimeConfig.backend, ...(stored.backend || {}) } }; } catch { return JSON.parse(JSON.stringify(defaultRuntimeConfig)); }
+}
+function getRuntimeMode() { return getRuntimeConfig().mode || 'direct'; }
+function getServiceConfig(id) { return getRuntimeConfig()[id] || {}; }
+function authHeaders(cfg = {}) { return cfg.apiKey ? { Authorization: cfg.apiKey.startsWith('Bearer ') ? cfg.apiKey : `Bearer ${cfg.apiKey}` } : {}; }
+async function sha256(value) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+function authState() { try { return JSON.parse(localStorage.getItem(authKey) || '{}'); } catch { return {}; } }
+function renderAuthGate(mode = 'login', error = '') {
+  const gate = document.getElementById('authGate');
+  const firstRun = mode === 'setup';
+  gate.innerHTML = `<div class="auth-card"><div class="auth-brand"><div class="brand-mark">LA</div><div><strong>拉美电商 AI 中台</strong><span>本地管理员入口</span></div></div><h2>${firstRun ? '创建本地管理员' : '管理员登录'}</h2><p class="auth-note">${firstRun ? '首次使用请设置一个本机管理员账号。' : '请输入本机管理员账号后继续。'} 密钥仍建议放在后端环境变量中。</p>${error ? `<div class="auth-error">${esc(error)}</div>` : ''}<form id="authForm" class="auth-form"><label>管理员账号<input name="username" autocomplete="username" required minlength="2" placeholder="例如 admin" /></label><label>密码<input name="password" type="password" autocomplete="${firstRun ? 'new-password' : 'current-password'}" required minlength="6" placeholder="至少 6 位" /></label>${firstRun ? '<label>确认密码<input name="confirm" type="password" required minlength="6" placeholder="再次输入密码" /></label>' : ''}<button class="primary" type="submit">${firstRun ? '创建并进入' : '登录工作台'}</button></form><div class="auth-disclaimer">仅保护当前浏览器界面，不提供服务器级安全认证。</div></div>`;
+  gate.classList.add('open');
+  gate.querySelector('#authForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); const data = Object.fromEntries(new FormData(e.target).entries());
+    if (firstRun && data.password !== data.confirm) { renderAuthGate('setup', '两次输入的密码不一致'); return; }
+    const hash = await sha256(`${data.username}:${data.password}`);
+    if (firstRun) { localStorage.setItem(authKey, JSON.stringify({ username: data.username, hash })); localStorage.setItem(`${authKey}-session`, '1'); gate.classList.remove('open'); render('dashboard'); notify('本地管理员已创建'); }
+    else if (hash === authState().hash && data.username === authState().username) { localStorage.setItem(`${authKey}-session`, '1'); gate.classList.remove('open'); render('dashboard'); notify('登录成功'); }
+    else renderAuthGate('login', '账号或密码错误');
+  });
+}
+function initAuth() { const state = authState(); if (!state.hash) renderAuthGate('setup'); else if (localStorage.getItem(`${authKey}-session`) !== '1') renderAuthGate('login'); }
+function logoutAdmin() { localStorage.removeItem(`${authKey}-session`); renderAuthGate('login'); }
+
 const integrationDefinitions = [
   { id: 'product', name: '商品 / 选品接口', description: '同步 TikTok Shop、ERP 或选品工具中的真实商品', fields: [['url', '接口地址', 'https://your-api.com/products'], ['key', '访问令牌', 'Bearer Token']] },
   { id: 'llm', name: 'LLM 脚本接口', description: '分析卖点并生成脚本与分镜，支持 OpenAI 兼容接口', fields: [['url', 'Chat Completions 地址', 'https://api.example.com/v1/chat/completions'], ['key', 'API Key', 'sk-...'], ['model', '模型名称', 'deepseek-chat']] },
@@ -219,8 +259,9 @@ function renderRadar() {
 }
 
 function renderIntegrations() {
-  const saved = JSON.parse(localStorage.getItem('latam-backend-config') || '{}');
-  return `<section class="band"><div class="band-head"><div><div class="band-title">接口中心</div><div class="band-sub">网页只连接你的后端，第三方密钥全部放在服务器环境变量中。</div></div><span class="status ${saved.url ? 'ok' : 'wait'}">${saved.url ? '后端已配置' : '未配置'}</span></div><form id="backendForm" class="backend-form"><label>后端 API 地址<input name="url" value="${esc(saved.url || '')}" placeholder="https://your-api.onrender.com" /></label><div class="integration-actions"><button class="secondary" type="button" data-action="test-backend">测试后端</button><button class="primary" type="submit">保存后端地址</button></div></form><div id="backendServices" class="service-status-grid"><div class="api-note">填写地址后点击“测试后端”，服务端会返回商品、LLM、声音、视频、RPA 的配置状态。</div></div><div class="api-note">安全边界：浏览器不再保存任何第三方 API Key。后端部署后，在 Render/Railway 的环境变量中配置真实密钥。</div></section>`;
+  const cfg = getRuntimeConfig();
+  const serviceCard = (id, title, sub, fields) => `<article class="integration-card"><div class="integration-head"><div><strong>${title}</strong><p>${sub}</p></div><span class="service-badge ${getServiceConfig(id).baseUrl ? 'ready' : ''}">${getServiceConfig(id).baseUrl ? '已填写' : '待配置'}</span></div><div class="integration-fields">${fields.map(([name, label, type = 'text', placeholder = '']) => `<label>${label}<div class="secret-wrap"><input name="${name}" type="${type}" value="${esc(getServiceConfig(id)[name] || '')}" placeholder="${placeholder}" data-service="${id}" data-field="${name}" />${type === 'password' ? '<button type="button" class="reveal-btn" data-reveal>显示</button>' : ''}</div></label>`).join('')}<div class="integration-actions"><button type="button" class="secondary compact-btn" data-action="test-service" data-service-id="${id}">测试连接</button></div></div></article>`;
+  return `<section class="band integrations-page"><div class="band-head"><div><div class="band-title">管理配置</div><div class="band-sub">统一管理视频、文案、声音和 RPA 接口</div></div><span class="status ${cfg.mode === 'direct' ? 'wait' : 'ok'}">${cfg.mode === 'direct' ? '本地直连' : '后端代理'}</span></div><div class="runtime-switch"><div><strong>运行模式</strong><p>${cfg.mode === 'direct' ? '接口从当前浏览器直接调用，适合本机调试。' : '浏览器只连接后端，第三方密钥放在服务器环境变量。'}</p></div><select id="runtimeMode"><option value="direct" ${cfg.mode === 'direct' ? 'selected' : ''}>本地直连模式</option><option value="backend" ${cfg.mode === 'backend' ? 'selected' : ''}>后端代理模式</option></select></div><div class="integration-grid">${serviceCard('seedance', 'Seedance 生图 / 视频', '火山引擎兼容接口，填写视频和图片模型 ID。', [['baseUrl', 'Base URL', 'text', 'https://ark.cn-beijing.volces.com/api/v3'], ['apiKey', 'API Key', 'password', '请输入 Seedance 密钥'], ['videoModel', 'Seedance 模型 ID', 'text', 'doubao-seedance-1-0-pro'], ['imageModel', 'Seedream 模型 ID', 'text', 'doubao-seedream-3-0-t2i']])}${serviceCard('llm', 'LLM 文案（OpenAI 兼容）', '用于商品分析、脚本和分镜生成。', [['baseUrl', 'Base URL', 'text', 'https://api.deepseek.com/v1'], ['apiKey', 'API Key', 'password', 'sk-...'], ['model', '模型名称', 'text', 'deepseek-chat']])}${serviceCard('tts', 'Qwen3-TTS-VC', '将西语旁白转换成配音。', [['baseUrl', 'Base URL', 'text', 'https://dashscope.aliyuncs.com/api/v1'], ['apiKey', 'API Key', 'password', '请输入 TTS 密钥'], ['voice', '音色 / Voice', 'text', 'longxiaochun_v2']])}${serviceCard('rpa', 'EasySpider RPA', '连接本机 RPA 服务执行发布动作。', [['baseUrl', 'Base URL', 'text', 'http://127.0.0.1:8899'], ['apiKey', 'API Key / Token', 'password', '没有可留空']])}</div><section class="integration-card backend-card"><div class="integration-head"><div><strong>后端连接</strong><p>公开网址建议使用后端模式，避免第三方密钥暴露给浏览器。</p></div><span class="service-badge ${cfg.backend.url ? 'ready' : ''}">${cfg.backend.url ? '已填写' : '待配置'}</span></div><label>后端 API 地址<div class="secret-wrap"><input id="backendUrl" value="${esc(cfg.backend.url || '')}" placeholder="https://your-api.onrender.com" /></div></label><div class="integration-actions"><button class="secondary" type="button" data-action="test-backend">测试后端</button></div><div id="backendServices" class="service-status-grid"><div class="api-note">保存地址后测试，可查看商品、LLM、声音、视频、RPA 配置状态。</div></div></section><div class="integration-footer"><button class="secondary" data-action="clear-local-config">清除本机接口配置</button><button class="primary" data-action="save-integrations">保存全部配置</button></div><div class="api-note warning-note">本地直连模式会把 API Key 保存到浏览器本地存储，只适合个人电脑或内网演示；公开部署请切换为后端代理模式。</div></section>`;
 }
 
 function renderSettings() { return renderIntegrations(); }
@@ -249,6 +290,12 @@ function render(viewName) {
 
 navItems.forEach(btn => btn.addEventListener('click', () => render(btn.dataset.view)));
 menuBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
+document.getElementById('avatarBtn')?.addEventListener('click', () => {
+  const menu = document.createElement('div'); menu.className = 'avatar-menu'; menu.innerHTML = '<strong>本地管理员</strong><button data-logout>退出登录</button><button data-reset>重置本机配置</button>';
+  menu.querySelector('[data-logout]').addEventListener('click', () => { menu.remove(); logoutAdmin(); });
+  menu.querySelector('[data-reset]').addEventListener('click', () => { localStorage.removeItem(authKey); localStorage.removeItem(`${authKey}-session`); localStorage.removeItem(runtimeConfigKey); menu.remove(); renderAuthGate('setup'); });
+  document.body.appendChild(menu); const rect = document.getElementById('avatarBtn').getBoundingClientRect(); menu.style.top = `${rect.bottom + 8}px`; menu.style.right = `${Math.max(12, window.innerWidth - rect.right)}px`;
+});
 searchInput.addEventListener('input', () => {
   if (document.body.dataset.view === 'products') render('products');
 });
@@ -266,11 +313,13 @@ document.addEventListener('click', (e) => {
   if (action === 'view-run') { openRunResult(e.target.closest('[data-run-id]').dataset.runId); return; }
   if (action === 'publish-run') { publishRun(e.target.dataset.runId); return; }
   if (action === 'test-integration') { testIntegration(e.target.dataset.integrationId); return; }
+  if (action === 'test-service') { testService(e.target.dataset.serviceId); return; }
   if (action === 'test-backend') { testBackend(); return; }
   if (action === 'sync') { runApiAction('/api/products/sync', {}, '趋势数据已刷新'); return; }
   if (action === 'analyze') { runApiAction('/api/products/analyze', {}, 'AI 分析任务已加入队列'); return; }
   if (action === 'add') { runApiAction('/api/products', { action: 'add' }, '商品已加入待入库列表'); return; }
-  if (action === 'clear-config') { localStorage.removeItem('latam-integrations'); render('integrations'); notify('接口配置已清除'); return; }
+  if (action === 'clear-config' || action === 'clear-local-config') { localStorage.removeItem(runtimeConfigKey); localStorage.removeItem('latam-backend-config'); render('integrations'); notify('接口配置已清除'); return; }
+  if (action === 'save-integrations') { saveIntegrations(); return; }
   if (action === 'new-video') {
     const modal = document.createElement('div');
     modal.className = 'modal-mask open';
@@ -287,6 +336,17 @@ document.addEventListener('click', (e) => {
     modal.addEventListener('click', ev => { if (ev.target === modal || ev.target.hasAttribute('data-close')) modal.remove(); });
     document.body.appendChild(modal);
   }
+});
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'runtimeMode') {
+    const cfg = getRuntimeConfig(); cfg.mode = e.target.value; localStorage.setItem(runtimeConfigKey, JSON.stringify(cfg)); render('integrations'); notify(`已切换为${e.target.value === 'direct' ? '本地直连' : '后端代理'}模式`);
+  }
+});
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-reveal]'); if (!btn) return;
+  const input = btn.parentElement.querySelector('input'); input.type = input.type === 'password' ? 'text' : 'password'; btn.textContent = input.type === 'password' ? '显示' : '隐藏';
 });
 
 document.addEventListener('submit', e => {
@@ -333,11 +393,13 @@ async function runApiAction(path, body, successMessage) {
 
 function getIntegrations() { return JSON.parse(localStorage.getItem('latam-integrations') || '{}'); }
 function updateEngineStatus() {
-  const saved = getIntegrations(); const el = document.getElementById('engineStatus');
-  if (el) el.textContent = `${Object.keys(saved).length}/5 已配置`;
+  const cfg = getRuntimeConfig(); const el = document.getElementById('engineStatus');
+  const count = ['seedance', 'llm', 'tts', 'rpa'].filter(id => cfg[id]?.baseUrl && cfg[id]?.apiKey).length;
+  if (el) el.textContent = `${count}/4 服务已配置`;
 }
 
 async function syncProducts() {
+  if (getRuntimeMode() === 'direct') { notify('本地直连模式暂未配置商品数据源，请切换后端模式或补充商品接口'); render('integrations'); return; }
   const backend = getBackendUrl();
   if (!backend) { notify('请先在接口中心配置后端地址'); render('integrations'); return; }
   notify('正在同步真实商品…');
@@ -352,9 +414,9 @@ async function syncProducts() {
   } catch (error) { notify(`同步失败：${error.message}`); }
 }
 
-function getBackendUrl() { return (JSON.parse(localStorage.getItem('latam-backend-config') || '{}').url || '').replace(/\/$/, ''); }
+function getBackendUrl() { return (getRuntimeConfig().backend?.url || JSON.parse(localStorage.getItem('latam-backend-config') || '{}').url || '').replace(/\/$/, ''); }
 async function testBackend() {
-  const input = document.querySelector('#backendForm input[name="url"]'); const url = (input?.value || getBackendUrl()).replace(/\/$/, '');
+  const input = document.querySelector('#backendUrl'); const url = (input?.value || getBackendUrl()).replace(/\/$/, '');
   if (!url) { notify('请先填写后端地址'); return; }
   notify('正在测试后端…');
   try {
@@ -363,6 +425,22 @@ async function testBackend() {
     if (target) target.innerHTML = Object.entries(data.services || {}).map(([key, ok]) => `<div class="service-status"><strong>${key.toUpperCase()}</strong><span class="status ${ok ? 'ok' : 'wait'}">${ok ? '已配置' : '待配置'}</span></div>`).join('');
     notify(`后端连接成功 · ${data.market || 'MX'}`);
   } catch (error) { notify(`后端连接失败：${error.message}`); }
+}
+
+function saveIntegrations() {
+  const cfg = getRuntimeConfig();
+  document.querySelectorAll('.integration-card input[data-service]').forEach(input => { cfg[input.dataset.service] = cfg[input.dataset.service] || {}; cfg[input.dataset.service][input.dataset.field] = input.value.trim(); });
+  const backendUrl = document.querySelector('#backendUrl')?.value.trim(); if (backendUrl !== undefined) cfg.backend.url = backendUrl;
+  localStorage.setItem(runtimeConfigKey, JSON.stringify(cfg)); localStorage.setItem('latam-backend-config', JSON.stringify({ url: cfg.backend.url })); updateEngineStatus(); render('integrations'); notify('全部接口配置已保存');
+}
+
+async function testService(id) {
+  const cfg = getServiceConfig(id); if (!cfg.baseUrl) { notify('请先填写 Base URL'); return; }
+  notify(`正在测试 ${id.toUpperCase()}…`);
+  try {
+    const response = await fetch(cfg.baseUrl.replace(/\/$/, ''), { method: 'OPTIONS', headers: authHeaders(cfg) });
+    notify(response.ok || response.status < 500 ? `${id.toUpperCase()} 地址可访问` : `${id.toUpperCase()} 返回 HTTP ${response.status}`);
+  } catch (error) { notify(`${id.toUpperCase()} 连接失败：${error.message}`); }
 }
 
 function testIntegration(id) {
@@ -384,6 +462,7 @@ function openProductionModal(product) {
 }
 
 async function executeProduction(product, mode, assets) {
+  if (getRuntimeMode() === 'direct') { return executeDirectProduction(product, mode, assets); }
   const backend = getBackendUrl();
   if (!backend) { notify('请先在接口中心配置后端地址'); render('integrations'); return; }
   notify('正在创建后端生产任务…');
@@ -392,6 +471,21 @@ async function executeProduction(product, mode, assets) {
     const task = await res.json(); if (!res.ok) throw new Error(task.error || `HTTP ${res.status}`);
     upsertRun(task); render('factory'); notify('任务已创建，正在后台自动生产'); pollRun(task.id, backend);
   } catch (error) { notify(`任务创建失败：${error.message}`); }
+}
+
+async function executeDirectProduction(product, mode, assets) {
+  const llm = getServiceConfig('llm');
+  if (!llm.baseUrl || !llm.apiKey) { notify('本地直连模式请先配置 LLM 的 Base URL 和 API Key'); render('integrations'); return; }
+  notify('正在调用 LLM 生成商品分析与脚本…');
+  const endpoint = /chat\/completions$/.test(llm.baseUrl) ? llm.baseUrl : `${llm.baseUrl.replace(/\/$/, '')}/chat/completions`;
+  const prompt = `请为商品${product?.name || '未命名商品'}生成墨西哥西班牙语短视频内容。输出商品分析、15秒脚本和三段分镜，严格使用已知商品信息，不要编造参数。`;
+  try {
+    const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders(llm) }, body: JSON.stringify({ model: llm.model || 'deepseek-chat', messages: [{ role: 'user', content: prompt }], temperature: 0.4 }) });
+    const data = await res.json(); if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+    const content = data.choices?.[0]?.message?.content || JSON.stringify(data);
+    const task = { id: `direct-${Date.now()}`, productName: product?.name || '未命名商品', mode, status: '已完成', analysis: content, script: content, storyboard: [], updatedAt: Date.now(), media: assets };
+    upsertRun(task); render('factory'); notify('LLM 内容已生成，可继续配置 TTS/视频接口');
+  } catch (error) { notify(`直连生成失败：${error.message}`); }
 }
 
 function upsertRun(task) {
@@ -421,4 +515,5 @@ async function publishRun(id) {
   try { const response = await fetch(`${backend}/api/production/${id}/publish`, { method: 'POST' }); const data = await response.json(); if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`); upsertRun(data); render('factory'); notify('已提交 RPA 发布'); } catch (error) { notify(`发布失败：${error.message}`); }
 }
 
-render('dashboard');
+initAuth();
+if (localStorage.getItem(`${authKey}-session`) === '1') render('dashboard');
