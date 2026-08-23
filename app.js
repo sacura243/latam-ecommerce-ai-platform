@@ -291,11 +291,17 @@ function render(viewName) {
 navItems.forEach(btn => btn.addEventListener('click', () => render(btn.dataset.view)));
 menuBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
 document.getElementById('avatarBtn')?.addEventListener('click', () => {
+  document.querySelector('.avatar-menu')?.remove();
   const menu = document.createElement('div'); menu.className = 'avatar-menu'; menu.innerHTML = '<strong>本地管理员</strong><button data-logout>退出登录</button><button data-reset>重置本机配置</button>';
   menu.querySelector('[data-logout]').addEventListener('click', () => { menu.remove(); logoutAdmin(); });
   menu.querySelector('[data-reset]').addEventListener('click', () => { localStorage.removeItem(authKey); localStorage.removeItem(`${authKey}-session`); localStorage.removeItem(runtimeConfigKey); menu.remove(); renderAuthGate('setup'); });
   document.body.appendChild(menu); const rect = document.getElementById('avatarBtn').getBoundingClientRect(); menu.style.top = `${rect.bottom + 8}px`; menu.style.right = `${Math.max(12, window.innerWidth - rect.right)}px`;
 });
+document.addEventListener('click', (e) => {
+  const menu = document.querySelector('.avatar-menu');
+  if (menu && !menu.contains(e.target) && !e.target.closest('#avatarBtn')) menu.remove();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelector('.avatar-menu')?.remove(); });
 searchInput.addEventListener('input', () => {
   if (document.body.dataset.view === 'products') render('products');
 });
