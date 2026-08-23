@@ -247,9 +247,9 @@ searchInput.addEventListener('input', () => {
 document.addEventListener('click', (e) => {
   const action = e.target.closest('[data-action]')?.dataset.action;
   if (action === 'settings') { render('settings'); sidebar.classList.remove('open'); return; }
-  if (action === 'sync') { notify('趋势数据已刷新（当前为演示数据）'); return; }
-  if (action === 'analyze') { notify('AI 分析任务已加入队列'); return; }
-  if (action === 'add') { notify('商品已加入待入库列表'); return; }
+  if (action === 'sync') { runApiAction('/api/products/sync', {}, '趋势数据已刷新'); return; }
+  if (action === 'analyze') { runApiAction('/api/products/analyze', {}, 'AI 分析任务已加入队列'); return; }
+  if (action === 'add') { runApiAction('/api/products', { action: 'add' }, '商品已加入待入库列表'); return; }
   if (action === 'clear-config') { localStorage.removeItem('latam-api-config'); render('settings'); notify('接口配置已清除'); return; }
   if (action === 'new-video') {
     const modal = document.createElement('div');
@@ -284,6 +284,19 @@ function notify(message) {
   const toast = document.createElement('div');
   toast.className = 'toast'; toast.textContent = message; document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 2400);
+}
+
+async function runApiAction(path, body, successMessage) {
+  const cfg = JSON.parse(localStorage.getItem('latam-api-config') || '{}');
+  if (!cfg.baseUrl) { notify(`${successMessage}（当前为演示数据）`); return; }
+  notify('正在请求后端接口…');
+  try {
+    const response = await fetch(`${cfg.baseUrl.replace(/\/$/, '')}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    notify(`${successMessage}（后端已响应）`);
+  } catch (error) {
+    notify(`接口请求失败：${error.message}`);
+  }
 }
 
 render('dashboard');
