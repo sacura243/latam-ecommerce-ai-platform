@@ -191,17 +191,23 @@ function renderDashboard() {
 
 function renderProducts(query = '') {
   const items = syncedProducts.filter(p => `${p.name} ${p.cat} ${p.state}`.toLowerCase().includes(query.toLowerCase()));
+  const ready = items.filter(p => p.media?.length).length;
+  const warning = items.filter(p => p.state === '预警').length;
+  const avgMargin = items.length ? (items.reduce((sum, p) => sum + (Number(p.margin) || 0), 0) / items.length).toFixed(1) : '0.0';
   return `
-    <section class="band">
-      <div class="band-head"><div><div class="band-title">商品中心</div><div class="band-sub">墨西哥店铺商品、利润和素材统一管理</div></div><div class="toolbar-actions"><button class="secondary" data-action="open-integrations">配置商品接口</button><button class="primary" data-action="sync-products">↻ 同步商品</button></div></div>
+    <section class="band product-overview">
+      <div class="band-head"><div><div class="band-title">商品中心</div><div class="band-sub">商品资料、利润、知识库和内容生产统一管理</div></div><div class="toolbar-actions"><button class="secondary" data-action="open-integrations">配置商品接口</button><button class="primary" data-action="sync-products">↻ 同步商品</button></div></div>
+      <div class="product-stats"><div><span>商品总数</span><strong>${items.length}</strong><small>当前筛选结果</small></div><div><span>资料完整</span><strong>${ready}</strong><small>图片 / 视频已同步</small></div><div><span>平均利润率</span><strong>${avgMargin}%</strong><small>按当前商品估算</small></div><div><span>库存预警</span><strong class="warn-text">${warning}</strong><small>需要补货或复核</small></div></div>
+      <div class="product-toolbar"><div class="filter-tabs"><button class="filter-tab active">全部商品 <b>${items.length}</b></button><button class="filter-tab">待补资料</button><button class="filter-tab">待生产</button><button class="filter-tab">库存预警</button></div><div class="toolbar-actions"><button class="secondary compact-btn" data-action="batch-analyze">批量 AI 分析</button><button class="secondary compact-btn" data-action="batch-produce">批量生成内容</button></div></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>#</th><th>商品</th><th>类目</th><th>售价</th><th>成本</th><th>单件利润</th><th>利润率</th><th>库存</th><th>状态</th><th>内容生产</th></tr></thead>
+          <thead><tr><th>#</th><th>商品资料</th><th>类目</th><th>售价 / 成本</th><th>单件利润</th><th>利润率</th><th>库存</th><th>知识库</th><th>内容任务</th><th>操作</th></tr></thead>
           <tbody>
-            ${items.map((p, i) => `<tr class="table-row"><td>${i + 1}</td><td><strong>${esc(p.name)}</strong><div class="table-meta">${p.media?.length ? `已同步 ${p.media.length} 个素材` : '素材待接口返回'}</div></td><td>${esc(p.cat)}</td><td>$${esc(p.sellPrice ?? '-')}</td><td>$${esc(p.cost ?? '-')}</td><td class="profit-cell">$${esc(p.profit ?? '-')}</td><td>${esc(p.margin ?? '-')}%</td><td>${esc(p.stock || '-')}</td><td><span class="status ${p.state === '预警' ? 'wait' : 'ok'}">${esc(p.state || '待分析')}</span></td><td><button class="inline-btn compact-btn" data-action="produce" data-product-id="${esc(p.id || p.name)}">一键生产</button></td></tr>`).join('')}
+            ${items.map((p, i) => `<tr class="table-row"><td>${i + 1}</td><td><button class="product-link" data-action="product-detail" data-product-id="${esc(p.id || p.name)}">${esc(p.name)}</button><div class="table-meta">${p.media?.length ? `已同步 ${p.media.length} 个图/视频` : '等待商品接口返回素材'}</div></td><td><span class="tag">${esc(p.cat)}</span></td><td><strong>$${esc(p.sellPrice ?? '-')}</strong><div class="table-meta">成本 $${esc(p.cost ?? '-')}</div></td><td class="profit-cell">$${esc(p.profit ?? '-')}</td><td><strong>${esc(p.margin ?? '-')}%</strong><div class="mini-progress"><i style="width:${Math.min(100, Number(p.margin) || 0)}%"></i></div></td><td><strong>${esc(p.stock || '-')}</strong><div class="table-meta">${p.state === '预警' ? '建议补货' : '库存正常'}</div></td><td><span class="status ${p.media?.length ? 'ok' : 'wait'}">${p.media?.length ? '已建立' : '待建立'}</span></td><td><span class="status wait">待生产</span></td><td><button class="inline-btn compact-btn" data-action="produce" data-product-id="${esc(p.id || p.name)}">一键生产</button></td></tr>`).join('')}
           </tbody>
         </table>
       </div>
+      <div class="product-footnote"><span>商品资料来自同步接口；图片、视频和文本知识库会自动带入内容工厂。</span><button class="inline-btn compact-btn" data-action="open-integrations">配置资料源 →</button></div>
     </section>
   `;
 }
@@ -320,6 +326,12 @@ document.addEventListener('click', (e) => {
     const id = e.target.closest('[data-product-id]').dataset.productId;
     const product = syncedProducts.find(p => String(p.id || p.name) === id);
     if (product) openProductionModal(product);
+    return;
+  }
+  if (action === 'product-detail') {
+    const id = e.target.closest('[data-product-id]').dataset.productId;
+    const product = syncedProducts.find(p => String(p.id || p.name) === id);
+    if (product) openProductDetail(product);
     return;
   }
   if (action === 'view-run') { openRunResult(e.target.closest('[data-run-id]').dataset.runId); return; }
@@ -470,6 +482,13 @@ function openProductionModal(product) {
   form.innerHTML = '<input type="hidden" name="mode" value="assets"><input type="hidden" name="language" value="西班牙语（墨西哥）">';
   modal.querySelectorAll('input[name="mode"]').forEach(input => input.addEventListener('change', () => form.querySelector('[name="mode"]').value = input.value));
   modal.querySelector('select[name="language"]').addEventListener('change', e => form.querySelector('[name="language"]').value = e.target.value);
+  modal.addEventListener('click', ev => { if (ev.target === modal || ev.target.hasAttribute('data-close')) modal.remove(); }); document.body.appendChild(modal);
+}
+
+function openProductDetail(product) {
+  const modal = document.createElement('div'); modal.className = 'modal-mask open';
+  const media = product.media || [];
+  modal.innerHTML = `<div class="modal product-detail-modal"><div class="detail-head"><div><div class="band-title">${esc(product.name)}</div><div class="small">${esc(product.cat || '未分类')} · 墨西哥市场</div></div><span class="status ${product.state === '预警' ? 'wait' : 'ok'}">${esc(product.state || '待分析')}</span></div><div class="detail-grid"><div class="detail-section"><h4>商品资料</h4><div class="detail-list"><span>售价<strong>$${esc(product.sellPrice ?? '-')}</strong></span><span>采购成本<strong>$${esc(product.cost ?? '-')}</strong></span><span>单件利润<strong class="profit-cell">$${esc(product.profit ?? '-')}</strong></span><span>利润率<strong>${esc(product.margin ?? '-')}%</strong></span><span>库存<strong>${esc(product.stock ?? '-')}</strong></span><span>已同步素材<strong>${media.length} 个</strong></span></div></div><div class="detail-section"><h4>内容生产准备度</h4><div class="readiness"><div><span>基础资料</span><b class="ready-dot ${product.name ? 'on' : ''}"></b></div><div><span>图片 / 视频</span><b class="ready-dot ${media.length ? 'on' : ''}"></b></div><div><span>商品知识库</span><b class="ready-dot"></b></div><div><span>西语脚本</span><b class="ready-dot"></b></div></div><p class="small">点击“一键生产”后，系统会自动生成卖点、脚本、分镜和视频任务。</p></div></div><div class="detail-actions"><button class="secondary" data-close>关闭</button><button class="secondary" data-close data-action="open-knowledge">商品知识库</button><button class="primary" data-close data-action="produce" data-product-id="${esc(product.id || product.name)}">一键生产</button></div></div>`;
   modal.addEventListener('click', ev => { if (ev.target === modal || ev.target.hasAttribute('data-close')) modal.remove(); }); document.body.appendChild(modal);
 }
 
