@@ -103,8 +103,14 @@ function renderAuthGate(mode = 'login', error = '') {
     else renderAuthGate('login', '账号或密码错误');
   });
 }
-function initAuth() { const state = authState(); if (!state.hash) renderAuthGate('setup'); else if (localStorage.getItem(`${authKey}-session`) !== '1') renderAuthGate('login'); }
-function logoutAdmin() { localStorage.removeItem(`${authKey}-session`); renderAuthGate('login'); }
+function initAuth() {
+  const state = authState();
+  if (!state.hash) { renderAuthGate('setup'); return; }
+  // 本地工具默认记住管理员；用户主动退出后，下一次打开才要求重新登录。
+  if (localStorage.getItem(`${authKey}-session`) !== 'logged-out') localStorage.setItem(`${authKey}-session`, '1');
+  else renderAuthGate('login');
+}
+function logoutAdmin() { localStorage.setItem(`${authKey}-session`, 'logged-out'); renderAuthGate('login'); }
 
 const integrationDefinitions = [
   { id: 'product', name: '商品 / 选品接口', description: '同步 TikTok Shop、ERP 或选品工具中的真实商品', fields: [['url', '接口地址', 'https://your-api.com/products'], ['key', '访问令牌', 'Bearer Token']] },
